@@ -34,10 +34,6 @@ docker run -d \
   -e CHUNK_N_VEC_URL="http://192.168.28.246:8998/process" \
   s3-qdrant-sync
 ```
-Через docker-compose
-```bash
-docker-compose up -d
-```
 
 API Endpoints:
 ```
@@ -50,7 +46,7 @@ GET /status - Операционный статус сервиса
 POST /sync - Ручной запуск синхронизации
 ```
 ### Конфигурация
-Настройки в config.py или через переменные окружения:
+Настройки в config.py (можно указать в secrets.py) или через переменные окружения:
 ```
 MINIO_ENDPOINT - Endpoint MinIO сервера
 
