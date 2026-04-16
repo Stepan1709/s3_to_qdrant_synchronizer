@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import logging
+import uuid
 from datetime import datetime
 from typing import Dict, List, Tuple, Optional, Set
 from contextlib import asynccontextmanager
@@ -313,11 +314,15 @@ async def upload_chunks_to_qdrant(
     """Upload chunks to Qdrant as points"""
     try:
         points = []
+        file_id_base = hashlib.md5(f"{filename}_{file_hash}".encode()).hexdigest()[:16]
         for i, chunk in enumerate(chunks):
-            point_id = f"{filename}_{i}_{file_hash[:8]}"
+            point_id = uuid.uuid5(
+                uuid.NAMESPACE_DNS,
+                f"{file_id_base}_{i}_{file_hash[:8]}"
+            )
             points.append(
                 qdrant_models.PointStruct(
-                    id=point_id,
+                    id=str(point_id),
                     vector=chunk["embedding"],
                     payload={
                         "file_name": filename,
