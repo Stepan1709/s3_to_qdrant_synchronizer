@@ -24,14 +24,14 @@ docker build -t s3-qdrant-sync .
 docker run -d \
   --name s3-qdrant-sync \
   -p 8997:8997 \
-  -e MINIO_ENDPOINT="192.168.28.246:8995" \
+  -e MINIO_ENDPOINT="localhost:8995" \
   -e MINIO_ACCESS_KEY="minio_root" \
-  -e MINIO_SECRET_KEY="api_key_for_minio_rag" \
+  -e MINIO_SECRET_KEY="your_api_key_for_minio" \
   -e QDRANT_HOST="localhost" \
   -e QDRANT_PORT=6333 \
-  -e QDRANT_API_KEY="api_key_for_qdrant_rag" \
-  -e TEXT_CONVERTER_URL="http://192.168.28.246:8999/convert" \
-  -e CHUNK_N_VEC_URL="http://192.168.28.246:8998/process" \
+  -e QDRANT_API_KEY="your_api_key_for_qdrant" \
+  -e TEXT_CONVERTER_URL="http://localhost:8999/convert" \
+  -e CHUNK_N_VEC_URL="http://localhost:8998/process" \
   s3-qdrant-sync
 ```
 
