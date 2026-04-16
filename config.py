@@ -18,6 +18,7 @@ except ImportError:
     QDRANT_API_KEY = os.getenv('QDRANT_API_KEY', '')
     QDRANT_COLLECTION_NAME = os.getenv('QDRANT_COLLECTION_NAME', 'test-collection')
     QDRANT_VECTOR_SIZE = int(os.getenv('QDRANT_VECTOR_SIZE', '1024'))
+    QDRANT_USE_HTTPS = os.getenv('QDRANT_USE_HTTPS', 'False').lower() == 'true'
 
     # Service URLs
     TEXT_CONVERTER_URL = os.getenv('TEXT_CONVERTER_URL', '')

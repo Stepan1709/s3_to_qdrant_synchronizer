@@ -18,7 +18,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 from config import (
     MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY, MINIO_BUCKET_NAME, MINIO_SECURE,
     QDRANT_HOST, QDRANT_PORT, QDRANT_API_KEY, QDRANT_COLLECTION_NAME, QDRANT_VECTOR_SIZE,
-    TEXT_CONVERTER_URL, CHUNK_N_VEC_URL, SERVICE_PORT, SYNC_INTERVAL_SECONDS,
+    QDRANT_USE_HTTPS, TEXT_CONVERTER_URL, CHUNK_N_VEC_URL, SERVICE_PORT, SYNC_INTERVAL_SECONDS,
     REQUEST_TIMEOUT, MAX_RETRIES, RETRY_DELAY_SECONDS, LOG_LEVEL, LOG_FORMAT
 )
 
@@ -67,7 +67,9 @@ def init_clients():
     qdrant_client = QdrantClient(
         host=QDRANT_HOST,
         port=QDRANT_PORT,
-        api_key=QDRANT_API_KEY if QDRANT_API_KEY else None
+        api_key=QDRANT_API_KEY if QDRANT_API_KEY else None,
+        https=QDRANT_USE_HTTPS,
+        timeout=30
     )
 
 
