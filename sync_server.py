@@ -174,12 +174,13 @@ async def get_qdrant_files_info() -> Dict[str, Dict]:
 
             for point in points:
                 payload = point.payload
-                if payload and "file_name" in payload:
-                    filename = payload["file_name"]
+                if payload and "metadata" in payload and "file_name" in payload["metadata"]:
+                    metadata = payload["metadata"]
+                    filename = metadata["file_name"]
                     files_info[filename] = {
-                        "hash": payload.get("file_hash", ""),
-                        "modified": payload.get("file_modified", ""),
-                        "tags": payload.get("file_tags", {})
+                        "hash": metadata.get("file_hash", ""),
+                        "modified": metadata.get("file_modified", ""),
+                        "tags": metadata.get("file_tags", {})
                     }
 
             if next_offset is None:
@@ -228,7 +229,7 @@ async def delete_file_from_qdrant(filename: str):
             points_selector=qdrant_models.Filter(
                 must=[
                     qdrant_models.FieldCondition(
-                        key="file_name",
+                        key="metadata.file_name",
                         match=qdrant_models.MatchValue(value=filename)
                     )
                 ]
@@ -275,16 +276,16 @@ async def extract_text_from_file(file_content: bytes, filename: str) -> Optional
     retry=retry_if_exception_type((httpx.TimeoutException, httpx.ConnectError))
 )
 async def chunk_and_vectorize(text: str, filename: str) -> Optional[List[Dict]]:
-    """Send text to chunking and vectorization service"""
+    """Send text to chunking and vectorization service with updated API"""
     try:
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+            # Updated payload for new chunk_n_vec API
             payload = {
                 "text": text,
-                "text_format_md": True,
                 "max_chunk_size": 4000,
-                "chunking_strategy": "recursive"
+                "overlap": 500
             }
-            response = await client.post(CHUNK_N_VEC_URL, json=payload)
+            response = await client.post(f"{CHUNK_N_VEC_URL}/process", json=payload)
 
             if response.status_code != 200:
                 logger.error(f"Chunking service returned error {response.status_code} for {filename}: {response.text}")
@@ -296,7 +297,9 @@ async def chunk_and_vectorize(text: str, filename: str) -> Optional[List[Dict]]:
                 return None
 
             logger.info(
-                f"Successfully chunked and vectorized {filename}, total_chunks: {result.get('total_chunks', 0)}")
+                f"Successfully chunked and vectorized {filename}, total_chunks: {result.get('total_chunks', 0)}, "
+                f"processing_time: {result.get('processing_time', 0):.3f}s"
+            )
             return result["chunks"]
 
     except Exception as e:
@@ -311,10 +314,13 @@ async def upload_chunks_to_qdrant(
         file_modified: datetime,
         file_tags: Dict
 ):
-    """Upload chunks to Qdrant as points"""
+    """Upload chunks to Qdrant as points with new nested metadata structure"""
     try:
         points = []
         file_id_base = hashlib.md5(f"{filename}_{file_hash}".encode()).hexdigest()[:16]
+        total_chunks = len(chunks)
+        file_modified_str = file_modified.isoformat() if isinstance(file_modified, datetime) else str(file_modified)
+
         for i, chunk in enumerate(chunks):
             point_id = uuid.uuid5(
                 uuid.NAMESPACE_DNS,
@@ -325,14 +331,16 @@ async def upload_chunks_to_qdrant(
                     id=str(point_id),
                     vector=chunk["embedding"],
                     payload={
-                        "file_name": filename,
-                        "file_hash": file_hash,
-                        "file_modified": file_modified.isoformat() if isinstance(file_modified, datetime) else str(
-                            file_modified),
-                        "file_tags": file_tags,
-                        "chunk_index": i,
-                        "chunk_text": chunk["chunk_text"],
-                        "total_chunks": len(chunks)
+                        "content": chunk["chunk_text"],
+                        "metadata": {
+                            "file_name": filename,
+                            "file_hash": file_hash,
+                            "file_modified": file_modified_str,
+                            "file_tags": file_tags,
+                            "chunk_position": i + 1,
+                            "chunk_index": i,
+                            "total_chunks": total_chunks
+                        }
                     }
                 )
             )
