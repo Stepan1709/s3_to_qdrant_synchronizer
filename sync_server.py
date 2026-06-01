@@ -285,7 +285,7 @@ async def chunk_and_vectorize(text: str, filename: str) -> Optional[List[Dict]]:
                 "max_chunk_size": 4000,
                 "overlap": 500
             }
-            response = await client.post(f"{CHUNK_N_VEC_URL}/process", json=payload)
+            response = await client.post(CHUNK_N_VEC_URL, json=payload)
 
             if response.status_code != 200:
                 logger.error(f"Chunking service returned error {response.status_code} for {filename}: {response.text}")
