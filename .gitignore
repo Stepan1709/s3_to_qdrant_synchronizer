@@ -9,7 +9,7 @@ venv/
 .venv/
 
 # Secrets
-secrets.py
+secrets_app.py
 
 # Logs
 log.txt

@@ -3,7 +3,7 @@ from datetime import timedelta
 
 # Try to import secrets, if not available, use environment variables or defaults
 try:
-    from secrets import *
+    from secrets_app import *
 except ImportError:
     # S3 configuration
     MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT', '')
