@@ -49,7 +49,11 @@ minio_client = None
 qdrant_client = None
 
 # Semaphore for controlling concurrent file processing
-processing_semaphore = asyncio.Semaphore(5)  # Process up to 5 files concurrently
+processing_semaphore = asyncio.Semaphore(1)  # Process up to 1 files concurrently
+
+# Last health check time
+last_health_check_time = None
+HEALTH_CHECK_INTERVAL = 150  # seconds
 
 
 def init_clients():
@@ -480,8 +484,19 @@ async def periodic_sync():
 
 
 async def check_service_health() -> Dict:
-    """Check health of all dependent services"""
+    """Check health of all dependent services with rate limiting"""
+    global last_health_check_time
+
     current_time = datetime.now()
+
+    # Проверяем, нужно ли выполнять проверку здоровья
+    if last_health_check_time is not None:
+        time_since_last_check = (current_time - last_health_check_time).total_seconds()
+        if time_since_last_check < HEALTH_CHECK_INTERVAL:
+            return health_cache
+
+    last_health_check_time = current_time
+    logger.info("Performing health check of dependent services")
 
     # Check MinIO
     try:
