@@ -1,26 +1,16 @@
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
 .venv/
+venv/
+env/
 
-# Secrets
-secrets_app.py
+# Secrets / local configuration
+.env
 
 # Logs
-log.txt
 *.log
 
-# Temporary files
-/tmp/pdf_ocr_server/
-*.tmp
-
 # IDE
-.vscode/
 .idea/
-*.swp
-*.swo
+.vscode/

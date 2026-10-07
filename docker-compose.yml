@@ -1,0 +1,9 @@
+services:
+  s3-qdrant-sync:
+    build: .
+    image: s3-qdrant-sync:latest
+    container_name: s3-qdrant-sync
+    env_file: .env
+    ports:
+      - "8997:8997"
+    restart: unless-stopped

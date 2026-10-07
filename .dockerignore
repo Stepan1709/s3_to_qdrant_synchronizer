@@ -1,0 +1,9 @@
+.git
+.idea
+.vscode
+.venv
+__pycache__
+*.pyc
+.env
+*.log
+README.md
