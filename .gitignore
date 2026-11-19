@@ -14,3 +14,7 @@ env/
 # IDE
 .idea/
 .vscode/
+learning/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
