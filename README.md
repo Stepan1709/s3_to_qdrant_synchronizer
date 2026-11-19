@@ -30,14 +30,17 @@ S3 (MinIO) ──> s3_to_qdrant_synchronizer ┤                                
 Раз в `SYNC_INTERVAL_MINUTES` минут (и по `POST /sync`):
 
 1. Из S3 читается список объектов с ETag (используется как хеш содержимого) и тегами.
-2. Из Qdrant вычитывается список файлов по метаданным `metadata.file_name` / `metadata.file_hash`.
+2. Из Qdrant вычитывается список файлов: берётся первый чанк каждого файла (`metadata.chunk_index = 0`) и его
+   метаданные `metadata.file_name` / `metadata.file_hash`.
 3. Списки сравниваются: **новые** (есть в S3, нет в Qdrant), **удалённые** (есть в Qdrant, нет в S3),
    **изменённые** (ETag отличается).
-4. Для удалённых и изменённых файлов точки удаляются из Qdrant.
+4. Точки файлов, удалённых из S3, удаляются из Qdrant.
 5. Для новых и изменённых файлов: чтение из S3 → `file_to_text_converter_server` (`POST /convert`) →
    `chunk_n_vec_server` (`POST /process`) → запись точек в Qdrant.
+6. У изменённого файла точки прежней версии удаляются только после успешной записи новой: если обработка
+   не удалась, в Qdrant остаётся старая версия, а файл будет обработан заново в следующем цикле.
 
-Если обработка файла не удалась, он остаётся без точек в Qdrant и будет обработан заново в следующем цикле.
+Новый файл, обработка которого не удалась, будет повторно обработан в следующем цикле.
 Файлы, из которых не удалось извлечь текст, пропускаются (и пробуются снова в каждом цикле).
 
 ### Формат точек в Qdrant
@@ -88,7 +91,7 @@ S3 (MinIO) ──> s3_to_qdrant_synchronizer ┤                                
 | `REQUEST_TIMEOUT`        | `1200`                  | Таймаут обработки файла соседними сервисами, сек                      |
 | `MAX_RETRIES`            | `3`                     | Повторы при сетевых ошибках                                           |
 | `HEALTH_CHECK_INTERVAL`  | `150`                   | Как часто `/health` реально опрашивает зависимости, сек               |
-| `SERVICE_PORT`           | `8997`                  | Порт сервиса (в Docker-образе проброшен `8997`)                       |
+| `SERVICE_HOST` / `SERVICE_PORT` | `0.0.0.0` / `8997` | Адрес и порт сервиса (в Docker-образе проброшен `8997`)               |
 | `LOG_LEVEL`              | `INFO`                  | Уровень логирования                                                   |
 
 > `TEXT_CONVERTER_URL` и `CHUNK_N_VEC_URL` задаются **базовыми** URL. Раньше в них указывались полные пути
@@ -119,7 +122,7 @@ docker run -d --name s3-qdrant-sync -p 8997:8997 --env-file .env --restart unles
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 set -a; source .env; set +a                         # Windows PowerShell: задайте переменные через $env:NAME="..."
-python sync_server.py
+python -m app
 ```
 
 ## API
@@ -141,3 +144,31 @@ python sync_server.py
 ```bash
 docker compose logs -f --tail 100
 ```
+
+## Структура проекта
+
+```
+app/
+├── main.py            # сборка приложения, lifespan, периодический запуск синхронизации
+├── __main__.py        # запуск: python -m app
+├── core/              # конфигурация, логирование, исключения
+├── api/
+│   ├── deps.py        # зависимости FastAPI
+│   └── routers/       # HTTP-эндпоинты (health, sync)
+├── schemas/           # pydantic-модели: файлы, чанки, ответы API
+├── services/          # сценарий синхронизации, состояние, проверка зависимостей, планировщик
+├── repositories/      # доступ к данным: S3 (MinIO) и Qdrant
+└── clients/           # клиенты соседних сервисов (конвертер текста, чанкинг и векторизация)
+tests/                 # pytest
+```
+
+## Разработка
+
+```bash
+pip install -r requirements-dev.txt
+pre-commit install          # ruff и mypy перед каждым коммитом
+ruff check . && ruff format --check . && mypy app
+pytest
+```
+
+Те же проверки запускаются в GitHub Actions (`.github/workflows/ci.yml`).
